@@ -1,0 +1,129 @@
+extends layout
+
+block extrajs
+	script
+		var socket
+			, nickname;
+
+		function dateToDMYHM() {
+			var now = new Date();
+			return '@ ' + now.getHours() + ':' + now.getMinutes() + ' - ' + now.getDate() + '/' + (now.getMonth()+1) + '/' + now.getFullYear();
+		}
+
+		function dateToHMS() {
+			var now = new Date();
+			return '@' + now.getHours() + ':' + now.getMinutes() + ':' + now.getSeconds();
+		}
+
+		// Loading
+		$(function(){
+			// Focus on the nickname input
+			$('#nickname').focus();
+
+			//when Enter key is pressed on the choice of nickname
+			$('#nickname').keypress(function(e) {
+				if(e.which == 13) {
+					$(this).blur();
+					// Get the nickname
+					nickname = $('#nickname').val();
+					if(nickname){
+						// Connect to the server
+						socket = io.connect();
+
+						// On connection, notify the success of connection
+						socket.on('connect', function(){
+							
+						});
+
+						// Listener, whenever the server emits 'updatechat', this updates the chat body
+						socket.on('updatechat', function (username, data) {
+							$('#conversation').append('<strong>' + username + dateToHMS() + ':</strong> ' + data + '<br>');
+						});
+
+						// Listener, whenever the server emits 'updateusers', this updates the username list
+						socket.on('updateusers', function(data) {
+							$('#users').empty();
+							$.each(data, function(key, value) {
+								$('#users').append("<div id = '" + key + "'>" + key + " <i class = 'icon-hand-up'></i></div>");
+							});
+						});
+
+						// Listener to put a notification in a growl effect notifier
+						socket.on('notify', function(data) {
+							$.gritter.add({
+								text: data,
+								time: 3000
+							});
+						});
+
+						// Listener to put a notification in a growl effect notifier
+						socket.on('iswriting', function(data) {
+							$('#' + data).append("<notice class =" + data + "> <i class = 'icon-pencil'></i></notice>");
+						});
+
+						// Listener to put a notification in a growl effect notifier
+						socket.on('stoppedwriting', function(data) {
+							$('.' + data).remove();
+						});
+
+						// Sends an adduser demand
+						socket.emit('adduser', nickname);
+						$(this).replaceWith("<p><span class = 'label label-success'>" + nickname + " is connected " + dateToDMYHM() + "</span></p>");
+						$('#data').removeAttr("disabled");
+						$('#data').focus();
+
+					} else {
+						// Mauvais format de nickname
+						$('#nickname').focus();
+					}
+				}
+			});
+
+			// When a message is sent by Enter key
+			$('#data').keypress(function(e) {
+				if(e.which == 13) {
+					$(this).blur();
+					var message = $('#data').val();
+					$('#data').val('');
+					socket.emit('sendchat', message);
+				} else {
+					socket.emit('iswriting');
+				}
+			});
+
+			// Stopped writing
+			$('#data').keyup(function() {
+				socket.emit('stoppedwriting');
+			});
+
+			$('#data').focus(function() {
+				$('#data').val('');
+			});
+		});
+
+block content
+	.navbar.navbar-inverse.navbar-fixed-top
+		.navbar-inner
+			.container-fluid
+				a.btn.btn-navbar(data-toggle='collapse', data-target='.nav-collapse')
+					span.icon-bar
+					span.icon-bar
+					span.icon-bar
+				a.brand(href='/') #{title}
+	.container-fluid
+		.row-fluid
+			.span12
+				.row-fluid
+					.span9
+						#conversation
+					.span3
+						.sidebar-nav
+							ul.nav.nav-list
+								input#nickname(type='text', placeholder='Choose a username...')
+								li.nav-header Connected users
+								#users
+		.row-fluid(role='footer')
+			.span9
+				#notif
+				textarea.span12#data(rows="6", placeholder='Write something...', disabled)
+			
