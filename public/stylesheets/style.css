@@ -1,15 +1,31 @@
-body {
-	padding-top: 50px;
+body, html {
+  height: 100%;
+  overflow: hidden;
+  font: 14px "Lucida Grande", Helvetica, Arial, sans-serif;
 }
 
-.row-fluid[role="footer"] {
-	position:fixed;
-	bottom: 0;
+a {
+  color: #00B7FF;
 }
-#conversation {
-	margin-bottom: 5px;
-	padding-left: 5px;
-    opacity : 0.8;
-    height : 600px;
-    overflow : auto;
+
+.navbar-inner {
+  height: 40px;
+}
+
+.scrollable {
+  height: 100%;
+  overflow: auto;
+  bottom: 0;
+}
+
+.max-height {
+  height: 100%;
+}
+
+.no-overflow {
+  overflow: hidden;
+}
+
+.pad50-top {
+  padding-top: 50px;
 }

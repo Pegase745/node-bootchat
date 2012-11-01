@@ -51,45 +51,103 @@ var server = http.createServer(app).listen(app.get('port'), function(){
  * Socket.IO server (single process)
  */
 var io = sio.listen(server)
-  , usernames = {};
+  , visitors_list = []
+  , users_list = [];
 
 io.sockets.on('connection', function (socket) {
 
-  // when the client emits 'sendchat', this listens and executes
-  socket.on('sendchat', function (data) {
-    // we tell the client to execute 'updatechat' with 2 parameters
-    io.sockets.emit('updatechat', socket.username, data);
-  });
+  // On visitor join,   
+  socket.on('visitor_join', function (username) {
 
-  socket.on('iswriting', function() {
-    socket.broadcast.emit('iswriting', socket.username);
-  });
-
-  socket.on('stoppedwriting', function() {
-    socket.broadcast.emit('stoppedwriting', socket.username);
-  });
-
-  // when the client emits 'adduser', this listens and executes
-  socket.on('adduser', function(username){
-    // we store the username in the socket session for this client
+    // Store the username in the socket session for this client
     socket.username = username;
-    // add the client's username to the global list
-    usernames[username] = username;
-    // echo to client they've connected
-    socket.emit('notify', 'You are now connected to the server.');
-    // echo globally (all clients) that a person has connected
-    socket.broadcast.emit('notify', username + ' has joined the chat.')
-    // update the list of users in chat, client-side
-    io.sockets.emit('updateusers', usernames);
+
+    // Set user info
+    var visitor = {
+      username: username
+    };
+
+    // Add the user to the list of connected users
+    visitors_list.push(visitor);
+
+    // Say to the client that he have connected
+    socket.emit('notify', 'Welcome to the Node bootchat room !');
+
+    // Tell other connected clients that someone connected
+    socket.broadcast.emit('notify', visitor.username + ' has joined the room.');
+
+    // Global broadcast of the updated user list
+    io.sockets.emit('update_users_list', visitors_list, users_list);
   });
 
-  // when the user disconnects.. perform this
-  socket.on('disconnect', function(){
-    // remove the username from global usernames list
-    delete usernames[socket.username];
-    // update list of users in chat, client-side
-    io.sockets.emit('updateusers', usernames);
-    // echo globally that this client has left
+  // On user disconnection
+  socket.on('disconnect', function() {
+    // Remove the user from the global user list
+    visitors_list = visitors_list.filter(function(el) { 
+      return el.username != socket.username;
+    });
+
+    users_list = users_list.filter(function(el) { 
+      return el.username != socket.username;
+    });
+
+    // Update the list of users for the clients
+    io.sockets.emit('update_users_list', visitors_list, users_list);
+    
+    // Tell the others that the client has left
     socket.broadcast.emit('notify', socket.username + ' has disconnected.');
+  })
+
+  // On user send message
+  socket.on('send_msg', function(recipient,msg) {
+    if(recipient == 'conversation') {
+      // Tell the clients to update the conversation with the sent message
+      socket.broadcast.emit('update_conversation', socket.username, msg);
+    } else {
+      // Get the socket id from the recipient username
+      for(var key in users_list){
+        if(users_list[key].username == recipient) {
+          var s_id = users_list[key].socket_id;
+        }
+      }
+      io.sockets.socket(s_id).emit('update_pm', socket.username, msg);
+    }
+  });
+
+  // On user sends username
+  socket.on('send_username', function(username) {
+    // Set new user info
+    var user = {
+      username: username,
+      socket_id: socket.id
+    };
+
+    // Check if the username already exists
+    for(var key in users_list){
+      if(users_list[key].username == username) {
+        var exists = 1;
+      }
+    }
+
+    if(exists != 1) {
+      // Remove from the visitors list
+      visitors_list = visitors_list.filter(function(el) { 
+        return el.username != socket.username;
+      });
+
+      // Add the user to the list of connected users
+      users_list.push(user);
+
+      // Replace socket name with the new one
+      socket.username = username;
+
+      // Send the new user list and the updated anonymous list
+      io.sockets.emit('update_users_list', visitors_list, users_list)
+
+      // Tell him that it's ok to choose this username
+      socket.emit('good_username');
+    } else {
+      socket.emit('notify', 'Please choose another username');
+    }
   });
 });
