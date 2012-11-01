@@ -1,129 +1,175 @@
 extends layout
 
-block extrajs
-	script
-		var socket
-			, nickname;
-
-		function dateToDMYHM() {
-			var now = new Date();
-			return '@ ' + now.getHours() + ':' + now.getMinutes() + ' - ' + now.getDate() + '/' + (now.getMonth()+1) + '/' + now.getFullYear();
-		}
-
-		function dateToHMS() {
-			var now = new Date();
-			return '@' + now.getHours() + ':' + now.getMinutes() + ':' + now.getSeconds();
-		}
-
-		// Loading
-		$(function(){
-			// Focus on the nickname input
-			$('#nickname').focus();
-
-			//when Enter key is pressed on the choice of nickname
-			$('#nickname').keypress(function(e) {
-				if(e.which == 13) {
-					$(this).blur();
-					// Get the nickname
-					nickname = $('#nickname').val();
-					if(nickname){
-						// Connect to the server
-						socket = io.connect();
-
-						// On connection, notify the success of connection
-						socket.on('connect', function(){
-							
-						});
-
-						// Listener, whenever the server emits 'updatechat', this updates the chat body
-						socket.on('updatechat', function (username, data) {
-							$('#conversation').append('<strong>' + username + dateToHMS() + ':</strong> ' + data + '<br>');
-						});
-
-						// Listener, whenever the server emits 'updateusers', this updates the username list
-						socket.on('updateusers', function(data) {
-							$('#users').empty();
-							$.each(data, function(key, value) {
-								$('#users').append("<div id = '" + key + "'>" + key + " <i class = 'icon-hand-up'></i></div>");
-							});
-						});
-
-						// Listener to put a notification in a growl effect notifier
-						socket.on('notify', function(data) {
-							$.gritter.add({
-								text: data,
-								time: 3000
-							});
-						});
-
-						// Listener to put a notification in a growl effect notifier
-						socket.on('iswriting', function(data) {
-							$('#' + data).append("<notice class =" + data + "> <i class = 'icon-pencil'></i></notice>");
-						});
-
-						// Listener to put a notification in a growl effect notifier
-						socket.on('stoppedwriting', function(data) {
-							$('.' + data).remove();
-						});
-
-						// Sends an adduser demand
-						socket.emit('adduser', nickname);
-						$(this).replaceWith("<p><span class = 'label label-success'>" + nickname + " is connected " + dateToDMYHM() + "</span></p>");
-						$('#data').removeAttr("disabled");
-						$('#data').focus();
-
-					} else {
-						// Mauvais format de nickname
-						$('#nickname').focus();
-					}
-				}
-			});
-
-			// When a message is sent by Enter key
-			$('#data').keypress(function(e) {
-				if(e.which == 13) {
-					$(this).blur();
-					var message = $('#data').val();
-					$('#data').val('');
-					socket.emit('sendchat', message);
-				} else {
-					socket.emit('iswriting');
-				}
-			});
-
-			// Stopped writing
-			$('#data').keyup(function() {
-				socket.emit('stoppedwriting');
-			});
-
-			$('#data').focus(function() {
-				$('#data').val('');
-			});
-		});
-
 block content
-	.navbar.navbar-inverse.navbar-fixed-top
-		.navbar-inner
-			.container-fluid
-				a.btn.btn-navbar(data-toggle='collapse', data-target='.nav-collapse')
-					span.icon-bar
-					span.icon-bar
-					span.icon-bar
-				a.brand(href='/') #{title}
-	.container-fluid
-		.row-fluid
-			.span12
-				.row-fluid
-					.span9
-						#conversation
-					.span3
-						.sidebar-nav
-							ul.nav.nav-list
-								input#nickname(type='text', placeholder='Choose a username...')
-								li.nav-header Connected users
-								#users
-		.row-fluid(role='footer')
-			.span9
-				#notif
-				textarea.span12#data(rows="6", placeholder='Write something...', disabled)
-			
+  .navbar.navbar-inverse.navbar-fixed-top
+    .navbar-inner
+      .container
+        a.brand(href='/') #{title}
+        ul.nav.pull-right
+          li
+            .navbar-form
+              input#username(type='text', placeholder='Choose a username...')
+  .container.max-height.no-overflow
+    .row.pad50-top
+      .span12 
+        p#login
+        textarea.span12#msg(rows=3, placeholder='Write something... (Shift+Enter to send)')
+    .row.max-height
+      .span9.scrollable
+        ul.nav.nav-tabs#conv-tabs
+          li.active
+            a(href='#conversation', data-toggle="tab") Conversation
+        .tab-content
+          .tab-pane.active#conversation
+      .span3
+        .sidebar-nav
+          ul.nav.nav-list
+            li.nav-header Online users
+          ul.nav.nav-list
+            #users
+          hr
+          ul.nav.nav-list
+            li.nav-header Online visitors
+          ul.nav.nav-list
+            #visitors
+block extrajs
+  script
+    var socket;
+    var personal_username;
+
+    // Notifying a message in a growl effect with gritter
+    function notifier(message) {
+      $.gritter.add({
+          text: message, time: 1000
+        });
+    }
+
+    // Creating a new tab
+    function creatingTab(user) {
+      if($('#' + user).length == 0) {
+        $('.tab-content').append("<div class = 'tab-pane active' id = '" + user + "'></div>");
+        $('#conv-tabs').append("<li><a href = '#" + user + "' data-toggle = 'tab'>" + user + "&nbsp;<em class ='close'>&times;</em></a></li>");
+        $('#conv-tabs a:last').tab('show');
+      }
+    }
+
+    function dateToHMS() {
+      var now = new Date();
+      return '@' + now.getHours() + ':' + now.getMinutes() + ':' + now.getSeconds();
+    }
+
+    // On load
+    $(function(){
+      // Connecting to the server
+      socket = io.connect();
+
+      // Focus on textarea
+      $('#msg').focus();
+      $('#msg').popover('show');
+
+      // Current timestamp
+      var m = + new Date;
+
+      // Visitor joins
+      personal_username = 'Visitor' + m;
+      $('#login').append("<strong>You are connected as </strong>" + personal_username);
+      socket.emit('visitor_join', personal_username);
+
+      /* Sockets events */
+
+      // On notification put the message in a growl effect
+      socket.on('notify', function(message) {
+          notifier(message);
+        });
+
+      // On asking to update users list
+      socket.on('update_users_list', function(visitors_list, users_list){
+          // Empty current users list
+          $('#visitors').empty();
+          $('#users').empty();
+
+          // Update with the new one
+          $.each(visitors_list, function(key, value) {
+              if (value.username != personal_username) {
+                $('#visitors').append('<li>' + value.username + '</li>');
+              }
+            });
+          $.each(users_list, function(key, value) {
+              if (value.username != personal_username) {
+                $('#users').append("<li><a href = '#' class = 'user'>" + value.username + "</a></li>");
+              }
+            });
+        });
+
+      // On a good_username choose
+      socket.on('good_username', function(){
+        $('#username').remove();
+        $('#login').replaceWith("<p><strong>You are connected as </strong>" + personal_username +"</p>");
+        });
+
+      // On asking to update the conversation
+      socket.on('update_conversation', function(username, msg){
+          $('#conversation').prepend(username + '<small>' + dateToHMS() + '</small>: ' + msg + '<br>');
+          $("a[href ='#conversation']").fadeTo("slow", 0.33).delay(100).fadeTo("slow", 1);
+        });
+
+      // On asking to update the private messages
+      socket.on('update_pm', function(username, msg){
+          creatingTab(username);
+          $('#'+username).prepend(username + '<small>' + dateToHMS() + '</small>: ' + msg + '<br>');
+          $("a[href ='#" + username + "']").fadeTo("slow", 0.33).delay(100).fadeTo("slow", 1);
+        });
+      });
+      
+    // On Shift+Enter in textarea
+    $('#msg').keypress(function(e) {
+        if (e.keyCode == 13 && e.shiftKey) {
+            $(this).blur();
+            var recipient = $('div.active').attr('id');
+            socket.emit('send_msg', recipient, $(this).val());
+            $('div.active').prepend('Me<small>' + dateToHMS() + '</small>: ' + $(this).val() + '<br>');
+            $(this).val('');
+            $(this).focus();
+          }
+      });
+
+    // Focus on hovering textarea
+    $('#msg').hover(function(){
+        $(this).focus();
+      });
+
+    // On Enter in username input
+    $('#username').keypress(function(e) {
+        if (e.keyCode == 13) {
+            $(this).blur();
+            personal_username = $(this).val();
+            socket.emit('send_username', personal_username);
+          }
+      });
+
+    // On Click username in users list
+    $('#users li a.user').live('click', function(){
+        // If he is not a visitor
+        if($('#username').length == 0) {
+          // Create a tab for the user in question
+          user = $(this).html();
+          $('div.active').removeClass('active');
+          $('li.active').removeClass('active');
+          creatingTab(user);
+        } else {
+          notifier('Please choose a username for that !');
+        }
+      });
+
+    // On closing a tab
+    $('em.close').live('click', function () {
+        var username = $(this).parent().attr('href');
+        $(username).remove();
+        $(this).parent().remove();
+        $('#conv-tabs a:last').tab('show');
+      });
+
+    // On icon-pencil click
+    $('i.icon-pencil').live('click', function () { 
+        $('#login').replaceWith('<input id ="username" type ="text" placeholder ="Choose a username...">');
+      });
