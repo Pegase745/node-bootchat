@@ -30,10 +30,6 @@ app.configure(function(){
   app.use(express.static(path.join(__dirname, 'public')));
 });
 
-app.configure('development', function(){
-  app.use(express.errorHandler());
-});
-
 /**
  * Application routes
  */
@@ -54,23 +50,17 @@ var io = sio.listen(server)
   , visitors_list = []
   , users_list = [];
 
-io.configure('production', function(){
+app.configure('production', function(){
   io.enable('browser client minification');
   io.enable('browser client etag');
   io.enable('browser client gzip');
   io.set('log level', 1);
 
-  io.set('transports', [
-    'websocket'
-  , 'flashsocket'
-  , 'htmlfile'
-  , 'xhr-polling'
-  , 'jsonp-polling'
-  ]);
+  io.set('transports', ['xhr-polling']);
 });
 
-io.configure('development', function(){
-  io.set('transports', ['websocket']);
+app.configure('development', function(){
+  app.use(express.errorHandler());
 })
 
 io.sockets.on('connection', function (socket) {
