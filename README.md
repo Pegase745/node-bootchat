@@ -4,12 +4,12 @@
 Quick start
 -----------
 
-- Clone the repo, `git clone git://github.com/twitter/bootstrap.git`
 - Install on your machine nodejs and npm
 - Clone the project
 - Install project requirements: cd node-bootchat && npm install
-- node app.js
-- Enjoy this alpha version, used for discovering nodejs and socket.io
+- [Dev] Starting the server: node app.js
+- [Prod] Starting the server: NODE_ENV=production nohup node app.js > bootchat.log &
+- Enjoy and give feedbacks!
 
 Used assets
 -----------
