@@ -62,12 +62,12 @@ block extrajs
       var now = dateToHMS();
       var quote = "";
       if(position == "right") {
-        quote += "<blockquote class='pull-right'>";
+        quote += "<div class='clearfix'><blockquote class='pull-right'>";
       } else {
         quote += "<blockquote>";
       }
-      quote += "<p class='capitalize'>" + msg + "</p>" +
-        "<small>" + user + now + "</small></blockquote>";
+      quote += "<p>" + msg + "</p>" +
+        "<small>" + user + now + "</small></blockquote></div>";
       return quote;
     }
 
