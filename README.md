@@ -1,4 +1,4 @@
-[Node bootchat]
+[Node bootchat] [![Build Status](https://secure.travis-ci.org/Pegase745/node-bootchat.png?branch=master)](https://travis-ci.org/Pegase745/node-bootchat)
 =============
 
 Quick start
