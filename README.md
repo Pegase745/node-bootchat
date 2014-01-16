@@ -19,3 +19,6 @@ Used assets
 - [Express](http://expressjs.com/)
 - [Socket.IO](http://socket.io/)
 - [Gritter](https://github.com/jboesch/Gritter/)
+
+[![Bitdeli Badge](https://d2weczhvl823v0.cloudfront.net/Pegase745/node-bootchat/trend.png)](https://bitdeli.com/free "Bitdeli Badge")
+
